@@ -24,10 +24,10 @@ jobs:
 
       - name: Build Flet APK
         run: |
-          flet build apk --project-name "Gestione Finanziaria"
+          flet build apk --project "Gestione Finanziaria"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
-          path: build/sapk/app-release.apk
+          path: build/apk/app-release.apk
