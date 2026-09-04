@@ -1,18 +1,9 @@
-import os
 import sqlite3
 from datetime import datetime, timedelta
 import flet as ft
 
-def get_db_path():
-    try:
-        app_dir = ft.get_app_support_dir()
-        return os.path.join(app_dir, "gestione_finanziaria_avanzata.db")
-    except Exception:
-        return "gestione_finanziaria_avanzata.db"
-
 def init_db():
-    db_path = get_db_path()
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS transazioni (
@@ -55,24 +46,22 @@ def main(page: ft.Page):
     modifica_id_val = [None]
 
     data_corrente_odierna = datetime.now()
-    mese_selezionato_val = [data_corrente_odierna.strftime("%Y-%m")]
+    anno_corrente_str = str(data_corrente_odierna.year)
+    anno_selezionato_val = [anno_corrente_str]
 
-    mesi_disponibili = [
-        "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06",
-        "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12",
-        "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06",
-        "2027-07", "2027-08", "2027-09", "2027-10", "2027-11", "2027-12"
-    ]
+    # Storico decennale
+    anno_corrente_int = data_corrente_odierna.year
+    anni_disponibili = [str(y) for y in range(anno_corrente_int - 5, anno_corrente_int + 6)]
 
-    def cambia_mese_filtro(e):
-        mese_selezionato_val[0] = dd_filtro_mese.value
+    def cambia_anno_filtro(e):
+        anno_selezionato_val[0] = dd_filtro_anno.value
         carica_dati()
 
-    dd_filtro_mese = ft.Dropdown(
-        label="Visualizza Mese",
-        options=[ft.dropdown.Option(m) for m in mesi_disponibili],
-        value=data_corrente_odierna.strftime("%Y-%m") if data_corrente_odierna.strftime("%Y-%m") in mesi_disponibili else "2026-09",
-        on_select=cambia_mese_filtro,
+    dd_filtro_anno = ft.Dropdown(
+        label="Visualizza Anno",
+        options=[ft.dropdown.Option(a) for a in anni_disponibili],
+        value=anno_corrente_str if anno_corrente_str in anni_disponibili else anni_disponibili[0],
+        on_select=cambia_anno_filtro,
         width=200
     )
 
@@ -90,7 +79,7 @@ def main(page: ft.Page):
             ft.Text("Saldo BCC (Effettivo)", size=12, color="#bdbdbd"),
             lbl_saldo_bcc,
             ft.Divider(height=5, color="transparent"),
-            ft.Text("Proiettato a fine mese:", size=11, color="#80cbc4"),
+            ft.Text("Proiettato a fine anno:", size=11, color="#80cbc4"),
             lbl_proiettato_bcc
         ]),
         bgcolor="#1e2530",
@@ -104,7 +93,7 @@ def main(page: ft.Page):
             ft.Text("Saldo Hype (Effettivo)", size=12, color="#bdbdbd"),
             lbl_saldo_hype,
             ft.Divider(height=5, color="transparent"),
-            ft.Text("Proiettato a fine mese:", size=11, color="#80cbc4"),
+            ft.Text("Proiettato a fine anno:", size=11, color="#80cbc4"),
             lbl_proiettato_hype
         ]),
         bgcolor="#1e2530",
@@ -118,7 +107,7 @@ def main(page: ft.Page):
             ft.Text("Saldo Totale (Effettivo)", size=12, color="#81d4fa"),
             lbl_saldo_totale,
             ft.Divider(height=5, color="transparent"),
-            ft.Text("Proiettato a fine mese:", size=11, color="#81d4fa"),
+            ft.Text("Proiettato a fine anno:", size=11, color="#81d4fa"),
             lbl_proiettato_totale
         ]),
         bgcolor="#1e2530",
@@ -146,7 +135,7 @@ def main(page: ft.Page):
     ])
 
     def carica_opzioni_categorie():
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
         cursor = conn.cursor()
         cursor.execute("SELECT tipo, nome FROM categorie_custom")
         custom_rows = cursor.fetchall()
@@ -205,7 +194,7 @@ def main(page: ft.Page):
         nuova = txt_nuova_cat.value.strip()
         tipo_corrente = dd_tipo.value
 
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
         cursor = conn.cursor()
         cursor.execute("INSERT INTO categorie_custom (tipo, nome) VALUES (?, ?)", (tipo_corrente, nuova))
         conn.commit()
@@ -225,7 +214,7 @@ def main(page: ft.Page):
     lista_storico = ft.Column(spacing=10)
 
     def controlla_avvisi_globali():
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, conto, tipo, importo, categoria, descrizione, data 
@@ -256,16 +245,16 @@ def main(page: ft.Page):
         lista_storico.controls.clear()
         controlla_avvisi_globali()
 
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
         cursor = conn.cursor()
         
-        mese_filtro = mese_selezionato_val[0]
+        anno_filtro = anno_selezionato_val[0]
         cursor.execute("""
             SELECT id, conto, tipo, importo, categoria, descrizione, mesi_ripetizione, data 
             FROM transazioni 
-            WHERE strftime('%Y-%m', data) = ? 
+            WHERE strftime('%Y', data) = ? 
             ORDER BY data DESC, id DESC
-        """, (mese_filtro,))
+        """, (anno_filtro,))
         rows = cursor.fetchall()
         conn.close()
 
@@ -286,13 +275,9 @@ def main(page: ft.Page):
             elif conto == "Hype":
                 proiettato_hype += valore
 
-            mese_odierno_str = data_corrente_odierna.strftime("%Y-%m")
             is_effettivo = False
-            if mese_filtro < mese_odierno_str:
+            if data_str <= stringa_oggi:
                 is_effettivo = True
-            elif mese_filtro == mese_odierno_str:
-                if data_str <= stringa_oggi:
-                    is_effettivo = True
 
             if is_effettivo:
                 if conto == "BCC":
@@ -322,7 +307,7 @@ def main(page: ft.Page):
                 page.update()
 
             def elimina_movimento(e, rid=row_id):
-                conn = sqlite3.connect(get_db_path())
+                conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM transazioni WHERE id = ?", (rid,))
                 conn.commit()
@@ -394,7 +379,7 @@ def main(page: ft.Page):
             page.update()
             return
 
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect("gestione_finanziaria_avanzata.db")
         cursor = conn.cursor()
 
         if modifica_id_val[0] is None:
@@ -446,7 +431,7 @@ def main(page: ft.Page):
     )
 
     sezione_storico = ft.ExpansionTile(
-        title=ft.Text("Storico Movimenti del Mese Selezionato", size=18, weight=ft.FontWeight.BOLD),
+        title=ft.Text("Storico Movimenti dell'Anno Selezionato", size=18, weight=ft.FontWeight.BOLD),
         bgcolor="#1e2530",
         collapsed_bgcolor="#181f29",
         controls=[
@@ -460,7 +445,7 @@ def main(page: ft.Page):
     page.add(
         ft.Text("Gestione Spese & Tasse Multi-Conto", size=24, weight=ft.FontWeight.BOLD),
         container_avvisi,
-        ft.Row([dd_filtro_mese], alignment=ft.MainAxisAlignment.END),
+        ft.Row([dd_filtro_anno], alignment=ft.MainAxisAlignment.END),
         ft.Row([card_bcc, card_hype, card_totale], spacing=15),
         ft.Divider(height=20, color="transparent"),
         lbl_titolo_form,
