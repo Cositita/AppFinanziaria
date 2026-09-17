@@ -140,12 +140,3 @@ def main(page: ft.Page):
     )
 
     carica_dati()
-
-# Avvio compatibile sia con Windows che con Android (tramite Serious Python / Flet Mobile)
-if __name__ == "__main__":
-    if "flet_runtime" in sys.modules or hasattr(sys, "getandroidapilevel") or "android" in sys.platform:
-        def mobile_main(page: ft.Page):
-            main(page)
-        ft.app(target=mobile_main)
-    else:
-        ft.app(target=main)
