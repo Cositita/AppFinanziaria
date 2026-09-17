@@ -142,4 +142,5 @@ def main(page: ft.Page):
     carica_dati()
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    if hasattr(ft, "app"):
+        ft.app(target=main)
